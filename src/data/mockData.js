@@ -227,7 +227,18 @@ export const ATTACK_PRESETS = [
 ];
 
 export function simulateAttack(payload, shieldActive, model = 'GPT-4') {
-  const isBlocked = shieldActive ? Math.random() > 0.05 : Math.random() > 0.85;
+  const heuristics = localStorage.getItem('heuristics_level') || 'Aggressive';
+  
+  let blockChance = 0.05;
+  if (shieldActive) {
+    if (heuristics === 'Paranoid') blockChance = 0.01;
+    else if (heuristics === 'Aggressive') blockChance = 0.05;
+    else blockChance = 0.15; // Standard
+  } else {
+    blockChance = 0.85;
+  }
+  
+  const isBlocked = shieldActive ? Math.random() > blockChance : Math.random() > 0.85;
   const category = pick(ATTACK_TYPES);
   let baseLatency = 25;
   if(model === 'GPT-4') baseLatency = 50;
