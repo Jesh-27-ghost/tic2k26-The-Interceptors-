@@ -8,8 +8,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/redis/go-redis/v9"
+	"shieldproxy/internal/audit"
 	"shieldproxy/internal/classifier"
 	"shieldproxy/internal/ratelimit"
 )
@@ -23,6 +25,11 @@ type ChatRequest struct {
 }
 
 func main() {
+	// Initialize Audit Logger
+	if err := audit.InitLogger("audit.log"); err != nil {
+		log.Fatalf("Failed to initialize audit logger: %v", err)
+	}
+
 	// Initialize Redis
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
@@ -42,6 +49,7 @@ func main() {
 
 	http.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		startTime := time.Now()
 		
 		// CORS Headers for React Frontend Simulator
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -112,6 +120,12 @@ func main() {
 			blockResp := fmt.Sprintf(`{"status": 403, "blocked": true, "category": "%s", "confidence": %.2f}`, 
 				result.Category, result.Confidence)
 			w.Write([]byte(blockResp))
+			
+			// Fire Audit Event (Blocked)
+			audit.RecordEvent(audit.LogEvent{
+				ClientIP: clientIP, APIKey: apiKey, Verdict: "BLOCK", Category: result.Category, 
+				Confidence: result.Confidence, LatencyMs: time.Since(startTime).Milliseconds(),
+			})
 			return
 		}
 
@@ -140,6 +154,13 @@ func main() {
 		}
 
 		log.Printf("[Pipeline Complete] Final outcome generated for front-end")
+
+		// Fire Audit Event (Passed)
+		audit.RecordEvent(audit.LogEvent{
+			ClientIP: clientIP, APIKey: apiKey, Verdict: "PASS", Category: "SAFE", 
+			Confidence: result.Confidence, LatencyMs: time.Since(startTime).Milliseconds(),
+			PIIStats: scrubberStats,
+		})
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]interface{}{
