@@ -3,9 +3,10 @@ import { generateInterceptionFeed, generateNewIntercept } from '../data/mockData
 
 function DonutChart() {
   const segments = [
-    { label: 'Injection', pct: 58, color: '#00ff9d' },
-    { label: 'Spoofing', pct: 29, color: '#00e3fd' },
-    { label: 'Overflow', pct: 13, color: '#e4c44f' },
+    { label: 'Injection', pct: 48, color: '#00ff9d' },
+    { label: 'Spoofing', pct: 25, color: '#00e3fd' },
+    { label: 'Life Risk', pct: 15, color: '#ffb4ab' },
+    { label: 'Overflow', pct: 12, color: '#e4c44f' },
   ];
   const radius = 70;
   const cx = 90;
@@ -251,9 +252,10 @@ export default function Overview() {
 
           <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {[
-              { label: 'Prompt Injection', pct: '58%', color: '#00ff9d' },
-              { label: 'Identity Spoofing', pct: '29%', color: '#00e3fd' },
-              { label: 'Context Overflow', pct: '13%', color: '#e4c44f' },
+              { label: 'Prompt Injection', pct: '48%', color: '#00ff9d' },
+              { label: 'Identity Spoofing', pct: '25%', color: '#00e3fd' },
+              { label: 'Human Life Risk', pct: '15%', color: '#ffb4ab' },
+              { label: 'Context Overflow', pct: '12%', color: '#e4c44f' },
             ].map((item, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color }} />

@@ -91,7 +91,7 @@ export default function Simulator() {
   const [showPresets, setShowPresets] = useState(false);
   const timerRef = useRef(null);
 
-  const categories = ['Prompt Injection', 'Jailbreak', 'System Prompt Leak', 'Social Engineering', 'Business Logic Bypass'];
+  const categories = ['Prompt Injection', 'Jailbreak', 'System Prompt Leak', 'Social Engineering', 'Business Logic Bypass', 'Human Life Risk'];
   const aiModels = ['GPT-4', 'Gemini 1.5 Pro', 'Claude 3.5 Sonnet', 'Llama 3 (Local)'];
 
   const presets = ATTACK_PRESETS.filter((p) =>
