@@ -31,6 +31,15 @@ Finally, the asynchronous JSON **Audit Logger** captures full telemetry (`Latenc
 
 ---
 
+## 🛠️ Tech Stack
+- **Core Proxy & Firewall:** Go (`net/http`, `sync.Map`), Redis (Rate Limiting)
+- **Local AI Inference Engine:** Ollama (`llama3:8b`, temperature filtering, semantic context chunking)
+- **PII Scrubbing Microservice:** Python 3, FastAPI, spaCy (`en_core_web_sm`), Regex
+- **Frontend Dashboard:** React.js, Vite, Custom CSS Glassmorphism
+- **Version Control & Collaboration:** Git, GitHub
+
+---
+
 ## 📊 The "Digital Vault" Intelligence Dashboard
 
 We built a state-of-the-art React.js (Vite) interface styled using raw CSS ("The Digital Vault" Design System) to visualize the firewall in action.
