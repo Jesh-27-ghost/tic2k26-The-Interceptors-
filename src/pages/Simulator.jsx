@@ -98,7 +98,7 @@ export default function Simulator() {
     category === 'Jailbreak' ? p.category === 'Prompt Injection' : p.category === category
   );
 
-  const runSimulation = () => {
+  const runSimulation = async () => {
     if (!payload.trim()) return;
 
     setSimState('simulating');
@@ -111,13 +111,47 @@ export default function Simulator() {
     // Step 2: Shield analyzes
     setTimeout(() => setStage(2), 400);
 
-    // Step 3: Result
-    setTimeout(() => {
-      const res = simulateAttack(payload, shieldActive, targetModel);
+    // Step 3: Result (Hitting the real Go Proxy API)
+    const startTime = Date.now();
+    try {
+      const response = await fetch('http://localhost:8080/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer sim_key_123',
+        },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: payload }]
+        })
+      });
+
+      const latency = Date.now() - startTime;
+      const data = await response.json();
+      const isBlocked = response.status === 403 || data.blocked === true;
+
+      const res = {
+        blocked: isBlocked,
+        confidence: data.confidence ? Math.round(data.confidence * 100) : (isBlocked ? 99 : 50),
+        latency: latency,
+        category: data.category || (isBlocked ? 'threat_detected' : 'SAFE'),
+        raw: data
+      };
+
       setResult(res);
-      setStage(res.blocked ? 2 : 3);
-      setSimState('done');
-    }, 1200);
+      setStage(isBlocked ? 2 : 3);
+    } catch (err) {
+      console.error("Proxy connection failed:", err);
+      // Fallback if Go server is absolutely unreachable during demo
+      setResult({
+        blocked: true,
+        confidence: 0,
+        latency: Date.now() - startTime,
+        category: 'CONNECTION_REFUSED',
+        raw: { error: "Failed to connect to local Go firewall on port 8080", details: err.message }
+      });
+      setStage(2);
+    }
+    setSimState('done');
   };
 
   const clearAll = () => {
