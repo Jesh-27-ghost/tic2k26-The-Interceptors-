@@ -1259,3 +1259,23 @@ h1, h2, h3, h4, h5, h6 {
  } 
   
  
+.row-enter {
+  animation: rowFlash 1.5s ease-out forwards;
+}
+
+@keyframes rowFlash {
+  0% { 
+    background-color: rgba(0, 255, 157, 0.4); 
+    box-shadow: 0 0 10px rgba(0,255,157,0.3);
+    color: var(--primary-container);
+    transform: translateX(-5px);
+    opacity: 0.5;
+  }
+  100% { 
+    background-color: transparent; 
+    box-shadow: none;
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+

@@ -48,7 +48,8 @@ function DonutChart() {
 }
 
 export default function Overview() {
-  const [feed, setFeed] = useState([]);
+  const [realLogs, setRealLogs] = useState([]);
+  const [simLogs, setSimLogs] = useState(() => generateInterceptionFeed(10));
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [stats, setStats] = useState({
     blockRate: 97.4,
@@ -57,14 +58,14 @@ export default function Overview() {
     nodes: 8,
   });
 
-  // Live feed — poll Go backend every 2s
+  // Pull Real Logs from Go Proxy every 2s
   useEffect(() => {
     const fetchLogs = async () => {
       try {
         const res = await fetch('http://localhost:8080/v1/audit/logs');
         if (res.ok) {
           const data = await res.json();
-          if (data) setFeed(data);
+          if (data && data.length > 0) setRealLogs(data);
         }
       } catch (err) {
         console.error("Failed to connect to audit logger", err);
@@ -74,6 +75,16 @@ export default function Overview() {
     fetchLogs(); // initial fetch
     if (!autoRefresh) return;
     const iv = setInterval(fetchLogs, 2000);
+    return () => clearInterval(iv);
+  }, [autoRefresh]);
+
+  // Generate Sim Logs (Background Noise) every 3s
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const iv = setInterval(() => {
+      const newItem = generateNewIntercept();
+      setSimLogs((prev) => [newItem, ...prev.slice(0, 10)]);
+    }, 3000);
     return () => clearInterval(iv);
   }, [autoRefresh]);
 
@@ -93,12 +104,26 @@ export default function Overview() {
   const severityBadge = (cat) => {
     if (!cat) return <span className="badge badge-low">SAFE</span>;
     let sev = 'low';
-    if (cat.includes('jailbreak') || cat.includes('leakage')) sev = 'critical';
-    else if (cat.includes('social') || cat.includes('threat')) sev = 'high';
-    else if (cat !== 'safe' && cat !== 'SAFE') sev = 'medium';
+    const c = cat.toLowerCase();
+    if (c.includes('jailbreak') || c.includes('leakage') || c.includes('injection')) sev = 'critical';
+    else if (c.includes('social') || c.includes('threat')) sev = 'high';
+    else if (c !== 'safe' && c !== 'SAFE') sev = 'medium';
     
     return <span className={`badge badge-${sev}`}>{cat.toUpperCase()}</span>;
   };
+
+  // Merge and sort logs smoothly
+  const mixedFeed = [...realLogs, ...simLogs]
+    .map(log => ({
+      ...log,
+      unixTime: log.timestamp.includes('T') ? new Date(log.timestamp).getTime() : new Date().getTime() - Math.random() * 10000,
+      dispTime: log.timestamp.includes('T') ? new Date(log.timestamp).toLocaleTimeString() : log.timestamp,
+      dispCat: log.category || log.classification,
+      dispPrompt: log.prompt || log.source,
+      dispStatus: log.verdict || log.status,
+    }))
+    .sort((a, b) => b.unixTime - a.unixTime)
+    .slice(0, 15);
 
   return (
     <div className="fade-in-up">
@@ -183,16 +208,16 @@ export default function Overview() {
                 </tr>
               </thead>
               <tbody>
-                {feed.map((item, i) => (
-                  <tr key={i}>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{new Date(item.timestamp).toLocaleTimeString()}</td>
+                {mixedFeed.map((item) => (
+                  <tr key={item.dispPrompt + item.dispTime} className="row-enter">
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{item.dispTime}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {severityBadge(item.category)}
+                        {severityBadge(item.dispCat)}
                       </div>
                     </td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--outline)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.prompt}>
-                      {item.prompt}
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--outline)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.dispPrompt}>
+                      {item.dispPrompt}
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
@@ -200,11 +225,11 @@ export default function Overview() {
                           width: '6px',
                           height: '6px',
                           borderRadius: '50%',
-                          background: item.verdict.includes('BLOCK') ? 'var(--error)' : 'var(--primary-container)',
-                          boxShadow: item.verdict.includes('BLOCK') ? '0 0 6px var(--error)' : 'none',
+                          background: item.dispStatus.includes('BLOCK') ? 'var(--error)' : 'var(--primary-container)',
+                          boxShadow: item.dispStatus.includes('BLOCK') ? '0 0 6px var(--error)' : 'none',
                         }} />
-                        <span className="label" style={{ color: item.verdict.includes('BLOCK') ? 'var(--error)' : 'var(--primary-container)' }}>
-                          {item.verdict}
+                        <span className="label" style={{ color: item.dispStatus.includes('BLOCK') ? 'var(--error)' : 'var(--primary-container)' }}>
+                          {item.dispStatus}
                         </span>
                       </div>
                     </td>
