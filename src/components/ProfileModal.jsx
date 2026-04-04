@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { showToast } from './Toast';
 
 export default function ProfileModal({ onClose }) {
-  const [operatorId, setOperatorId] = useState('Operator_01');
+  const storedName = localStorage.getItem('userName') || 'Operator_01';
+  const [operatorId, setOperatorId] = useState(storedName);
   const [callsign, setCallsign] = useState('GHOST-ACTUAL');
   const [clearance, setClearance] = useState('SECURE_LEVEL_7');
   const [mfaEnabled, setMfaEnabled] = useState(true);
@@ -13,6 +14,7 @@ export default function ProfileModal({ onClose }) {
       showToast('Error: Identity fields cannot be blank.');
       return;
     }
+    localStorage.setItem('userName', operatorId);
     showToast('Vault Profile settings updated successfully.');
     onClose();
   };

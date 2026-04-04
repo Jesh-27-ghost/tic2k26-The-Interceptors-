@@ -7,6 +7,7 @@ export default function Login() {
   const [isRegister, setIsRegister] = useState(false);
   const [remember, setRemember] = useState(false);
   const [callsign, setCallsign] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -14,8 +15,8 @@ export default function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      showToast('Please provide your credentials.');
+    if (!fullName || !email || !password) {
+      showToast('Please provide all required fields.');
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -37,8 +38,7 @@ export default function Login() {
       showToast('Vault Entry successful.');
     }
     
-    let displayName = isRegister && callsign ? callsign : email.split('@')[0];
-    localStorage.setItem('userName', displayName);
+    localStorage.setItem('userName', fullName);
     navigate('/overview');
   };
 
@@ -142,6 +142,11 @@ export default function Login() {
                 <input type="text" className="input-underline" placeholder="Operator Callsign" value={callsign} onChange={e => setCallsign(e.target.value)} />
               </div>
             )}
+
+            <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
+              <span className="material-symbols-outlined" style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', fontSize: '18px', color: 'var(--outline)' }}>account_circle</span>
+              <input type="text" className="input-underline" placeholder="Operator Name" value={fullName} onChange={e => setFullName(e.target.value)} />
+            </div>
 
             <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
               <span className="material-symbols-outlined" style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', fontSize: '18px', color: 'var(--outline)' }}>email</span>
