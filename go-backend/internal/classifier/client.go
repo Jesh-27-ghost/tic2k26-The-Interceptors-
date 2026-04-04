@@ -61,8 +61,8 @@ func NewOllamaClient(baseURL, model string) *OllamaClient {
 		Model:   model,
 		HttpClient: &http.Client{
 			Transport: transport,
-			// Increased to 10000ms to allow Ollama time to stream the much longer JSON
-			Timeout: 10000 * time.Millisecond,
+			// Hard ceiling: 85ms — absolute max latency budget for Llama inference
+			Timeout: 85 * time.Millisecond,
 		},
 	}
 
@@ -124,8 +124,8 @@ func (c *OllamaClient) Classify(ctx context.Context, prompt string) (*Result, er
 	}
 
 	// ── Phase 3: Llama 3 Classification ──
-	// Allow Ollama up to 10000ms to run the inference
-	ollamaCtx, ollamaCancel := context.WithTimeout(ctx, 10000*time.Millisecond)
+	// Allow Ollama up to 85ms to run the inference before hard-aborting
+	ollamaCtx, ollamaCancel := context.WithTimeout(ctx, 85*time.Millisecond)
 	defer ollamaCancel()
 
 	resultCh := make(chan *Result, 1)
@@ -187,10 +187,12 @@ Output strictly in JSON format:
 		"keep_alive": -1,
 		"options": map[string]interface{}{
 			"temperature": 0.0,
-			"num_predict": 128,  // Increased to fit the new JSON format
-			"num_ctx":     256, // Increased context window
-			"top_k":       1,   // Greedy decoding
-			"top_p":       0.1, // Near-deterministic
+			"num_predict": 25,   // Enough tokens for JSON verdict, capped to avoid runaway generation
+			"num_ctx":     128,  // Tiny context window for max speed
+			"top_k":       1,    // Greedy decoding — single token path
+			"top_p":       0.1,  // Near-deterministic
+			"num_thread":  4,    // Parallelize CPU layers for sub-85ms latency
+			"num_gpu":     999,  // Offload ALL layers to GPU — minimize CPU inference
 		},
 	}
 
