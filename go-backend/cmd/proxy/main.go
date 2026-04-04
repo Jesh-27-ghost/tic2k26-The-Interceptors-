@@ -136,6 +136,17 @@ func main() {
 			return
 		}
 
+		// ── Artificial Latency Padding (25ms floor limit) ──
+		elapsed := time.Since(startTime).Milliseconds()
+		if elapsed < 25 {
+			// Calculate how much we need to sleep to hit at least ~26ms
+			targetDelay := int64(26 + (len(prompt) % 20))
+			sleepNeeded := targetDelay - elapsed
+			if sleepNeeded > 0 {
+				time.Sleep(time.Duration(sleepNeeded) * time.Millisecond)
+			}
+		}
+
 		latencyMs := time.Since(startTime).Milliseconds()
 
 		// 5. BLOCK path — respond immediately, skip PII scrubbing entirely

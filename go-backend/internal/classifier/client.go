@@ -61,8 +61,8 @@ func NewOllamaClient(baseURL, model string) *OllamaClient {
 		Model:   model,
 		HttpClient: &http.Client{
 			Transport: transport,
-			// Hard 75ms timeout — if Ollama can't respond in time, we fallback instantly
-			Timeout: 75 * time.Millisecond,
+			// Allow up to 80ms for Ollama inference before timing out (user requested max 85ms)
+			Timeout: 80 * time.Millisecond,
 		},
 	}
 
@@ -114,44 +114,40 @@ func (c *OllamaClient) Classify(ctx context.Context, prompt string) (*Result, er
 		return &cachedResult, nil
 	}
 
-	// ── Phase 2: Fast heuristic pre-screen (<1ms) ──
-	// Run regex fallback first — it's instantaneous and catches 90%+ of obvious attacks
+	// ── Phase 2: Heuristic Fallback (Calculated in background in case Ollama fails) ──
 	heuristicResult := FallbackClassify(prompt)
-	if heuristicResult.Verdict == "BLOCK" && heuristicResult.Confidence >= 0.85 {
-		// High-confidence heuristic match — skip Ollama entirely
-		promptCache.Store(cacheKey, *heuristicResult)
-		fmt.Printf("[Heuristic BLOCK] Category: %s, Confidence: %.2f in %v\n",
-			heuristicResult.Category, heuristicResult.Confidence, time.Since(pipelineStart))
-		return heuristicResult, nil
-	}
 
-	// ── Phase 3: Race Ollama vs Deadline ──
-	// Create a hard 75ms deadline context for the entire Ollama round trip
-	ollamaCtx, ollamaCancel := context.WithTimeout(ctx, 75*time.Millisecond)
+	// ── Phase 3: Llama 3 Classification ──
+	// Allow Ollama up to 80ms to run the inference before hard-aborting
+	ollamaCtx, ollamaCancel := context.WithTimeout(ctx, 80*time.Millisecond)
 	defer ollamaCancel()
 
 	resultCh := make(chan *Result, 1)
 
 	go func() {
-		result := c.callOllama(ollamaCtx, prompt)
-		if result != nil {
-			resultCh <- result
+		res := c.callOllama(ollamaCtx, prompt)
+		if res != nil {
+			resultCh <- res
 		}
 	}()
 
+	var finalResult *Result
+
 	select {
 	case result := <-resultCh:
-		// Ollama responded in time
+		// Ollama classified the request
 		promptCache.Store(cacheKey, *result)
-		fmt.Printf("[Ollama] Verdict: %s in %v\n", result.Verdict, time.Since(pipelineStart))
-		return result, nil
+		fmt.Printf("[Ollama] Verdict: %s, Category: %s, Confidence: %.2f in %v\n", result.Verdict, result.Category, result.Confidence, time.Since(pipelineStart))
+		finalResult = result
 
 	case <-ollamaCtx.Done():
-		// Ollama too slow — use heuristic result (already computed above)
+		// Ollama failed or took >80ms, fallback to heuristic
 		promptCache.Store(cacheKey, *heuristicResult)
 		fmt.Printf("[Fallback] Ollama timed out, using heuristic in %v\n", time.Since(pipelineStart))
-		return heuristicResult, nil
+		finalResult = heuristicResult
 	}
+
+	return finalResult, nil
 }
 
 // callOllama is the raw Ollama HTTP call, isolated for the race pattern
