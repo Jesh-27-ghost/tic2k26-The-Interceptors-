@@ -7,15 +7,20 @@ export default function Login() {
   const [isRegister, setIsRegister] = useState(false);
   const [remember, setRemember] = useState(false);
   const [callsign, setCallsign] = useState('');
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!username || !password) {
+    if (!email || !password) {
       showToast('Please provide your credentials.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showToast('Please provide a valid email ID.');
       return;
     }
     if (isRegister) {
@@ -31,6 +36,9 @@ export default function Login() {
     } else {
       showToast('Vault Entry successful.');
     }
+    
+    let displayName = isRegister && callsign ? callsign : email.split('@')[0];
+    localStorage.setItem('userName', displayName);
     navigate('/overview');
   };
 
@@ -136,8 +144,8 @@ export default function Login() {
             )}
 
             <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
-              <span className="material-symbols-outlined" style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', fontSize: '18px', color: 'var(--outline)' }}>person</span>
-              <input type="text" className="input-underline" placeholder="Credential ID / Username" value={username} onChange={e => setUsername(e.target.value)} />
+              <span className="material-symbols-outlined" style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', fontSize: '18px', color: 'var(--outline)' }}>email</span>
+              <input type="email" className="input-underline" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
 
             <div style={{ position: 'relative', marginBottom: '1.5rem' }}>

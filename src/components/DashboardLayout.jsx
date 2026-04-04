@@ -22,6 +22,8 @@ export default function DashboardLayout() {
   const [notifications, setNotifications] = useState(() => generateAlerts(5));
   const navigate = useNavigate();
   const location = useLocation();
+  const userName = localStorage.getItem('userName') || 'Operator_01';
+  const avatarText = userName.substring(0, 2).toUpperCase();
 
   useEffect(() => {
     // Generate new alert every 15s to simulate real-time notifications
@@ -156,12 +158,12 @@ export default function DashboardLayout() {
             <button
               className="topbar-avatar"
               onClick={() => { playClickSound(); setDropdownOpen(!dropdownOpen); setNotificationsOpen(false); }}
-              style={{ border: 'none', cursor: 'none' }}
+              style={{ border: 'none', cursor: 'pointer' }}
             >
-              OP
+              {avatarText}
             </button>
             <div className="topbar-user-info">
-              <span className="topbar-user-name">Operator_01</span>
+              <span className="topbar-user-name">{userName}</span>
               <span className="topbar-user-level">SECURE_LEVEL_7</span>
             </div>
 
