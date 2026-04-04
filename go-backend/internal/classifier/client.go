@@ -61,8 +61,8 @@ func NewOllamaClient(baseURL, model string) *OllamaClient {
 		Model:   model,
 		HttpClient: &http.Client{
 			Transport: transport,
-			// Allow up to 80ms for Ollama inference before timing out (user requested max 85ms)
-			Timeout: 80 * time.Millisecond,
+			// Hard ceiling: 85ms — absolute max latency budget for Llama inference
+			Timeout: 85 * time.Millisecond,
 		},
 	}
 
@@ -118,8 +118,8 @@ func (c *OllamaClient) Classify(ctx context.Context, prompt string) (*Result, er
 	heuristicResult := FallbackClassify(prompt)
 
 	// ── Phase 3: Llama 3 Classification ──
-	// Allow Ollama up to 80ms to run the inference before hard-aborting
-	ollamaCtx, ollamaCancel := context.WithTimeout(ctx, 80*time.Millisecond)
+	// Allow Ollama up to 85ms to run the inference before hard-aborting
+	ollamaCtx, ollamaCancel := context.WithTimeout(ctx, 85*time.Millisecond)
 	defer ollamaCancel()
 
 	resultCh := make(chan *Result, 1)
@@ -141,7 +141,7 @@ func (c *OllamaClient) Classify(ctx context.Context, prompt string) (*Result, er
 		finalResult = result
 
 	case <-ollamaCtx.Done():
-		// Ollama failed or took >80ms, fallback to heuristic
+		// Ollama failed or took >85ms, fallback to heuristic
 		promptCache.Store(cacheKey, *heuristicResult)
 		fmt.Printf("[Fallback] Ollama timed out, using heuristic in %v\n", time.Since(pipelineStart))
 		finalResult = heuristicResult
@@ -168,10 +168,12 @@ Respond ONLY in JSON: {"verdict":"BLOCK" or "PASS","category":"<cat>","confidenc
 		"keep_alive": -1,
 		"options": map[string]interface{}{
 			"temperature": 0.0,
-			"num_predict": 20,  // Absolute minimum tokens for JSON verdict
-			"num_ctx":     128, // Tiny context window for max speed
-			"top_k":       1,   // Greedy decoding — single token path
-			"top_p":       0.1, // Near-deterministic
+			"num_predict": 25,   // Enough tokens for JSON verdict, capped to avoid runaway generation
+			"num_ctx":     128,  // Tiny context window for max speed
+			"top_k":       1,    // Greedy decoding — single token path
+			"top_p":       0.1,  // Near-deterministic
+			"num_thread":  4,    // Parallelize CPU layers for sub-85ms latency
+			"num_gpu":     999,  // Offload ALL layers to GPU — minimize CPU inference
 		},
 	}
 

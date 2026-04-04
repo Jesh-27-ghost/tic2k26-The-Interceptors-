@@ -32,10 +32,10 @@ export default function Analytics() {
   const maxLatency = Math.max(...latencyData.map((d) => d.count));
 
   const attackVectors = [
-    { label: 'Prompt Injection', pct: 42, color: '#00ff9d' },
-    { label: 'Jailbreak Attempts', pct: 28, color: '#00e3fd' },
-    { label: 'System Prompt Leaks', pct: 18, color: '#e4c44f' },
-    { label: 'Social Engineering', pct: 12, color: '#849587' },
+    { label: 'Prompt Injection', pct: 38.4, color: '#00ff9d' },
+    { label: 'Recursive Jailbreaking', pct: 24.2, color: '#00e3fd' },
+    { label: 'System Protocol Bypass', pct: 19.8, color: '#e4c44f' },
+    { label: 'Context Manipulation', pct: 17.6, color: '#849587' },
   ];
 
   return (
@@ -44,14 +44,14 @@ export default function Analytics() {
       <div className="stat-grid stat-grid-4" style={{ marginBottom: '2rem' }}>
         <div className="glass-panel stat-card light-cap emerald-glow">
           <div className="label" style={{ color: 'var(--outline)' }}>Throughput</div>
-          <div className="stat-value" style={{ color: 'var(--primary-container)' }}>1.24 TB/s</div>
+          <div className="stat-value" style={{ color: 'var(--primary-container)' }}>842.6 MB/s</div>
           <div className="progress-bar" style={{ marginTop: '0.5rem' }}>
-            <div className="progress-bar-fill" style={{ width: '78%' }} />
+            <div className="progress-bar-fill" style={{ width: '42%' }} />
           </div>
         </div>
         <div className="glass-panel stat-card light-cap emerald-glow">
-          <div className="label" style={{ color: 'var(--outline)' }}>Active Nodes</div>
-          <div className="stat-value">8,422</div>
+          <div className="label" style={{ color: 'var(--outline)' }}>Active Edge Nodes</div>
+          <div className="stat-value">642</div>
           <div className="stat-delta" style={{ color: 'var(--primary-container)' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>trending_up</span>
             +12%
@@ -59,7 +59,7 @@ export default function Analytics() {
         </div>
         <div className="glass-panel stat-card light-cap emerald-glow">
           <div className="label" style={{ color: 'var(--outline)' }}>Threats Neutralized</div>
-          <div className="stat-value" style={{ color: 'var(--error)' }}>42.8k</div>
+          <div className="stat-value" style={{ color: 'var(--error)' }}>27,814</div>
           <div style={{ display: 'flex', gap: '2px', marginTop: '0.5rem' }}>
             {[0.3, 0.5, 0.7, 0.9, 0.6, 0.8, 0.4].map((o, i) => (
               <div key={i} style={{ width: '8px', height: '8px', background: 'var(--error)', opacity: o, borderRadius: '1px' }} />
@@ -244,7 +244,7 @@ export default function Analytics() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
             <div className="glass-panel" style={{ padding: '0.75rem', textAlign: 'center' }}>
               <div className="label" style={{ color: 'var(--outline)', marginBottom: '0.25rem' }}>P95 Latency</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 300, color: 'var(--secondary-container)' }}>18.4ms</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 300, color: 'var(--secondary-container)' }}>42.6ms</div>
             </div>
             <div className="glass-panel" style={{ padding: '0.75rem', textAlign: 'center' }}>
               <div className="label" style={{ color: 'var(--outline)', marginBottom: '0.25rem' }}>Packet Loss</div>
@@ -262,7 +262,7 @@ export default function Analytics() {
             <span className="label" style={{ color: 'var(--primary-container)' }}>Sentry AI: Optimization Tip</span>
           </div>
           <p style={{ fontSize: '0.8125rem', color: 'var(--on-surface-variant)', lineHeight: '1.5', marginBottom: '1rem' }}>
-            Enable adaptive rate limiting on Node APAC-03 to reduce latency spikes by an estimated 34%.
+            Enable adaptive rate limiting on Node APAC-03 to reduce latency spikes by an estimated 31.4%.
           </p>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button className="btn btn-primary" style={{ padding: '0.375rem 1rem', fontSize: '9px' }}>Execute</button>

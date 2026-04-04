@@ -116,7 +116,7 @@ export function generateClients() {
     totalIngress: `${(rand(100, 999) / 10).toFixed(1)}M`,
     neutralized: `${rand(500, 9999).toLocaleString()}`,
     blockRate: `${(rand(985, 999) / 10).toFixed(1)}%`,
-    latency: `${(rand(80, 220) / 10).toFixed(1)}ms`,
+    latency: `${(rand(250, 850) / 10).toFixed(1)}ms`,
     status: pick(['Operational', 'Operational', 'Operational', 'Traffic Spike', 'Hibernation']),
     trend: Array.from({ length: 5 }, () => rand(20, 100)),
     historicalData: Array.from({ length: 30 }, (_, j) => ({
@@ -158,7 +158,7 @@ export function generateAlerts(count = 20) {
     confidence: rand(65, 99),
     timestamp: generateTimestamp(i * rand(10, 30)),
     source: pick(SOURCES),
-    latency: `${rand(8, 45)}ms`,
+    latency: `${rand(25, 85)}ms`,
     category: pick(ATTACK_TYPES),
     codeFragment: `{
   "role": "system",
@@ -172,29 +172,54 @@ export function generateAlerts(count = 20) {
 }
 
 export function generateGeoData() {
-  return COUNTRIES.map((c) => ({
-    ...c,
-    attacks: rand(50, 2000),
-    intensity: pick(['high', 'medium', 'low']),
-  }));
+  return COUNTRIES.map((c) => {
+    // Hubs like US, IN, JP have higher traffic
+    const isHub = ['US', 'IN', 'JP', 'DE', 'CN'].includes(c.code);
+    const attacks = isHub ? rand(1200, 5000) : rand(10, 800);
+    const intensity = attacks > 3000 ? 'high' : attacks > 1000 ? 'medium' : 'low';
+    
+    return {
+      ...c,
+      attacks,
+      intensity,
+    };
+  });
 }
 
 export function generateRequestVolumeData() {
-  return Array.from({ length: 24 }, (_, i) => ({
-    hour: `${String(i).padStart(2, '0')}:00`,
-    requests: rand(8000, 45000),
-    blocked: rand(500, 5000),
-  }));
+  return Array.from({ length: 24 }, (_, i) => {
+    // Diurnal pattern: Higher traffic 10:00-22:00, Lower 02:00-06:00
+    // Sine wave offset used for natural curve
+    const hour = i;
+    const baseVal = 20000;
+    const amplitude = 15000;
+    const offset = 6; // Shift peak to late afternoon
+    const noise = rand(-1500, 1500);
+    
+    // Normal traffic curve (sine wave)
+    const requests = Math.floor(baseVal + amplitude * Math.sin((hour - offset) * Math.PI / 12) + noise);
+    
+    // Blocked traffic (random but usually proportional to volume with some spikes)
+    const blockBase = requests * 0.08;
+    const blockSpike = Math.random() > 0.8 ? rand(500, 3000) : 0;
+    const blocked = Math.floor(blockBase + blockSpike + rand(-200, 200));
+
+    return {
+      hour: `${String(i).padStart(2, '0')}:00`,
+      requests: Math.max(2000, requests),
+      blocked: Math.max(0, blocked),
+    };
+  });
 }
 
 export function generateLatencyBuckets() {
   return [
-    { range: '0-20ms', count: rand(3000, 8000) },
-    { range: '20-40ms', count: rand(6000, 15000) },
-    { range: '40-60ms', count: rand(2000, 6000) },
-    { range: '60-80ms', count: rand(800, 3000) },
-    { range: '80-100ms', count: rand(200, 1000) },
-    { range: '100+ms', count: rand(50, 400) },
+    { range: '0-25ms', count: rand(200, 600) },       // Below floor — cache hits only
+    { range: '25-40ms', count: rand(8000, 18000) },    // Primary bucket — fastest Llama verdicts
+    { range: '40-60ms', count: rand(6000, 14000) },    // Core operational range
+    { range: '60-75ms', count: rand(3000, 7000) },     // Normal Llama inference
+    { range: '75-85ms', count: rand(800, 2500) },      // Near-ceiling — complex prompts
+    { range: '85+ms', count: rand(20, 150) },           // Outliers — fallback heuristic kicks in
   ];
 }
 
@@ -240,12 +265,15 @@ export function simulateAttack(payload, shieldActive, model = 'GPT-4') {
   
   const isBlocked = shieldActive ? Math.random() > blockChance : Math.random() > 0.85;
   const category = pick(ATTACK_TYPES);
-  let baseLatency = 25;
-  if(model === 'GPT-4') baseLatency = 50;
-  if(model === 'Claude 3.5 Sonnet') baseLatency = 35;
-  if(model === 'Llama 3 (Local)') baseLatency = 12;
+  // Tuned latency ranges — Llama 3 targets 25-85ms window
+  let baseLatency = 45;
+  if(model === 'GPT-4') baseLatency = 55;
+  if(model === 'Claude 3.5 Sonnet') baseLatency = 48;
+  if(model === 'Llama 3 (Local)') baseLatency = 40;
 
-  const lat = rand(baseLatency - 5, baseLatency + 15);
+  // Clamp final latency to 25-85ms range
+  const rawLat = rand(baseLatency - 15, baseLatency + 25);
+  const lat = Math.max(25, Math.min(85, rawLat));
   
   return {
     blocked: isBlocked,

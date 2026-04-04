@@ -187,7 +187,7 @@ export default function Clients() {
         {[
           { label: 'API Keys', value: '1,248', delta: '+12', deltaColor: 'var(--primary-container)' },
           { label: 'Active Handshakes', value: '847', extra: 'live' },
-          { label: 'Global Latency', value: '14.2ms', color: 'var(--secondary-container)' },
+          { label: 'Global Latency', value: '38.7ms', color: 'var(--secondary-container)' },
           { label: 'Threat Mitigation', value: '99.9%', color: 'var(--primary-container)' },
         ].map((s, i) => (
           <div key={i} className="glass-card light-cap" style={{ padding: '1.25rem' }}>

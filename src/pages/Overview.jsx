@@ -54,7 +54,7 @@ export default function Overview() {
   const [stats, setStats] = useState({
     blockRate: 97.4,
     threats: 1247,
-    latency: 12,
+    latency: 38,
     nodes: 8,
   });
 
@@ -94,7 +94,7 @@ export default function Overview() {
       setStats({
         blockRate: (97 + Math.random() * 2.5).toFixed(1),
         threats: 1247 + Math.floor(Math.random() * 20),
-        latency: (10 + Math.random() * 8).toFixed(0),
+        latency: (25 + Math.random() * 60).toFixed(0),
         nodes: 8 + Math.floor(Math.random() * 3),
       });
     }, 10000);
