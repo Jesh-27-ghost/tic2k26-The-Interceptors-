@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -108,17 +109,48 @@ func main() {
 			log.Printf("[Blocked] Category: %s, Confidence: %.2f", result.Category, result.Confidence)
 			w.WriteHeader(http.StatusForbidden)
 			
-			// Return clean JSON response as per Phase 2 spec
 			blockResp := fmt.Sprintf(`{"status": 403, "blocked": true, "category": "%s", "confidence": %.2f}`, 
 				result.Category, result.Confidence)
 			w.Write([]byte(blockResp))
 			return
 		}
 
-		log.Printf("[Passed] Prompt clean (Category: %s)", result.Category)
-		// Success path — scaffolded proxy target forwarding would happen here.
-		// For now we just return PASS since upstream LLM forwarding is Phase 2 late steps.
-		fmt.Fprintf(w, `{"status": "PASS", "message": "Request passed rate limiter and threat classifier safely"}`)
+		log.Printf("[Passed Threat] Sending prompt to PII Scrubber...")
+		cleanPrompt := prompt
+		var scrubberStats interface{} = nil
+
+		scrubReqBody, _ := json.Marshal(map[string]string{"text": prompt})
+		scrubResp, err := http.Post("http://localhost:5001/scrub", "application/json", bytes.NewBuffer(scrubReqBody))
+		
+		if err == nil {
+			defer scrubResp.Body.Close()
+			if scrubResp.StatusCode == http.StatusOK {
+				var scrubResult map[string]interface{}
+				if err := json.NewDecoder(scrubResp.Body).Decode(&scrubResult); err == nil {
+					if ct, ok := scrubResult["clean_text"].(string); ok {
+						cleanPrompt = ct
+					}
+					scrubberStats = scrubResult["stats"]
+				}
+			} else {
+				log.Printf("PII Scrubber returned %d. Using original prompt.", scrubResp.StatusCode)
+			}
+		} else {
+			log.Printf("Failed to connect to Python PII Scrubber at :5001 - %v", err)
+		}
+
+		log.Printf("[Pipeline Complete] Final outcome generated for front-end")
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "PASS",
+			"blocked": false,
+			"message": "Request passed rate limiter and threat classifier safely",
+			"category": "SAFE",
+			"confidence": result.Confidence,
+			"scrubbed_prompt": cleanPrompt,
+			"pii_stats": scrubberStats,
+		})
 	})
 
 	log.Println("Starting ShieldProxy proxy on :8080...")
