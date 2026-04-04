@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -13,6 +14,7 @@ type LogEvent struct {
 	Timestamp      string      `json:"timestamp"`
 	ClientIP       string      `json:"client_ip"`
 	APIKey         string      `json:"api_key"`
+	Prompt         string      `json:"prompt"`
 	Verdict        string      `json:"verdict"`  // "BLOCK" or "PASS"
 	Category       string      `json:"category"`
 	Confidence     float64     `json:"confidence"`
@@ -58,4 +60,34 @@ func RecordEvent(event LogEvent) {
 	mu.Lock()
 	defer mu.Unlock()
 	logger.Println(string(data))
+}
+
+// GetLogs returns the most recent N log events in reverse-chronological order
+func GetLogs(limit int) ([]LogEvent, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	content, err := os.ReadFile("audit.log")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []LogEvent{}, nil
+		}
+		return nil, err
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(content)), "\n")
+	var events []LogEvent
+
+	// Parse backwards
+	for i := len(lines) - 1; i >= 0 && len(events) < limit; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		var evt LogEvent
+		if err := json.Unmarshal([]byte(line), &evt); err == nil {
+			events = append(events, evt)
+		}
+	}
+	return events, nil
 }

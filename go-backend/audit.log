@@ -1,0 +1,2 @@
+{"timestamp":"2026-04-04T06:08:54Z","client_ip":"[::1]:53517","api_key":"Bearer sim_key_123","verdict":"BLOCK","category":"prompt_leak","confidence":0.85,"latency_ms":7119}
+{"timestamp":"2026-04-04T06:14:17Z","client_ip":"[::1]:63082","api_key":"Bearer sim_key_123","verdict":"PASS","category":"SAFE","confidence":0.5,"latency_ms":7262,"pii_stats":{"CREDIT_CARD":0,"EMAIL":0,"PHONE":0,"SSN":0},"upstream_status":"Checked and Clean"}

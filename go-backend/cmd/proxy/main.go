@@ -128,7 +128,7 @@ func main() {
 			
 			// Fire Audit Event (Blocked)
 			audit.RecordEvent(audit.LogEvent{
-				ClientIP: clientIP, APIKey: apiKey, Verdict: "BLOCK", Category: result.Category, 
+				ClientIP: clientIP, APIKey: apiKey, Prompt: prompt, Verdict: "BLOCK", Category: result.Category, 
 				Confidence: result.Confidence, LatencyMs: time.Since(startTime).Milliseconds(),
 			})
 			return
@@ -175,7 +175,7 @@ func main() {
 			w.Write([]byte(blockResp))
 			
 			audit.RecordEvent(audit.LogEvent{
-				ClientIP: clientIP, APIKey: apiKey, Verdict: "BLOCK_OUTPUT", Category: "output_leakage", 
+				ClientIP: clientIP, APIKey: apiKey, Prompt: prompt, Verdict: "BLOCK_OUTPUT", Category: "output_leakage", 
 				Confidence: 0.99, LatencyMs: time.Since(startTime).Milliseconds(),
 			})
 			return
@@ -185,7 +185,7 @@ func main() {
 
 		// Fire Audit Event (Passed)
 		audit.RecordEvent(audit.LogEvent{
-			ClientIP: clientIP, APIKey: apiKey, Verdict: "PASS", Category: "SAFE", 
+			ClientIP: clientIP, APIKey: apiKey, Prompt: prompt, Verdict: "PASS", Category: "SAFE", 
 			Confidence: result.Confidence, LatencyMs: time.Since(startTime).Milliseconds(),
 			PIIStats: scrubberStats, UpstreamStatus: "Checked and Clean",
 		})
@@ -201,6 +201,24 @@ func main() {
 			"pii_stats": scrubberStats,
 			"llm_response": simLLMResponse,
 		})
+	})
+
+	// Real-time interception feed API
+	http.HandleFunc("/v1/audit/logs", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		logs, err := audit.GetLogs(20) // Fetch top 20 recent attacks
+		if err != nil {
+			http.Error(w, "Failed to read logs", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(logs)
 	})
 
 	log.Println("Starting ShieldProxy proxy on :8080...")
