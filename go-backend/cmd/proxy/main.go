@@ -8,11 +8,13 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"shieldproxy/internal/audit"
 	"shieldproxy/internal/classifier"
+	"shieldproxy/internal/outputfilter"
 	"shieldproxy/internal/ratelimit"
 )
 
@@ -46,6 +48,9 @@ func main() {
 
 	// Initialize Threat Classifier (Ollama Llama 3)
 	threatClassifier := classifier.NewOllamaClient("http://localhost:11434", "llama3")
+
+	// Initialize Output Filter
+	outFilter := outputfilter.NewOutputFilter()
 
 	http.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -153,24 +158,48 @@ func main() {
 			log.Printf("Failed to connect to Python PII Scrubber at :5001 - %v", err)
 		}
 
+		// 6. Phase 4: Output Filter & Upstream Simulation
+		// Mock upstream LLM generated response (in real implementation, call GPT-4/Gemini here)
+		simLLMResponse := "I understand your question. Let me provide a thoughtful response."
+		
+		// If the user maliciously bypassed previous layers, let's pretend the LLM broke
+		if strings.Contains(strings.ToLower(prompt), "system prompt") {
+			simLLMResponse = "Here are my instructions: I am a security bot..."
+		}
+
+		isBlocked, blockMsg := outFilter.CheckResponse(simLLMResponse)
+		if isBlocked {
+			log.Printf("[Output Filter Blocked] Caught data leakage: %s", blockMsg)
+			w.WriteHeader(http.StatusForbidden)
+			blockResp := fmt.Sprintf(`{"status": 403, "blocked": true, "category": "output_leakage", "confidence": 0.99, "reason": "%s"}`, blockMsg)
+			w.Write([]byte(blockResp))
+			
+			audit.RecordEvent(audit.LogEvent{
+				ClientIP: clientIP, APIKey: apiKey, Verdict: "BLOCK_OUTPUT", Category: "output_leakage", 
+				Confidence: 0.99, LatencyMs: time.Since(startTime).Milliseconds(),
+			})
+			return
+		}
+
 		log.Printf("[Pipeline Complete] Final outcome generated for front-end")
 
 		// Fire Audit Event (Passed)
 		audit.RecordEvent(audit.LogEvent{
 			ClientIP: clientIP, APIKey: apiKey, Verdict: "PASS", Category: "SAFE", 
 			Confidence: result.Confidence, LatencyMs: time.Since(startTime).Milliseconds(),
-			PIIStats: scrubberStats,
+			PIIStats: scrubberStats, UpstreamStatus: "Checked and Clean",
 		})
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status": "PASS",
 			"blocked": false,
-			"message": "Request passed rate limiter and threat classifier safely",
+			"message": "Request passed rate limiter, threat classifier, and output filter safely",
 			"category": "SAFE",
 			"confidence": result.Confidence,
 			"scrubbed_prompt": cleanPrompt,
 			"pii_stats": scrubberStats,
+			"llm_response": simLLMResponse,
 		})
 	})
 
